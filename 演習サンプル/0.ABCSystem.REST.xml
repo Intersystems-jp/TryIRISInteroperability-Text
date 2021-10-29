@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2021.1 (Build 205U)" ts="2021-10-27 17:21:11">
+<Class name="ABCSystem.REST">
+<Description>
+RESTディスパッチクラス</Description>
+<Super>%CSP.REST</Super>
+<TimeChanged>66044,58106.340574</TimeChanged>
+<TimeCreated>66043,36628.37538</TimeCreated>
+
+<XData name="UrlMap">
+<Description>
+ベースURL以降のURLに対応するHTTPメソッドと処理（メソッド）の指定</Description>
+<XMLNamespace>http://www.intersystems.com/urlmap</XMLNamespace>
+<Data><![CDATA[
+<Routes>
+<Route Url="/employee" Method="POST" Call="CreateEmployee" Cors="true"/>
+<Route Url="/employee" Method="GET" Call="GetAllEmployee" Cors="true"/>
+<Route Url="/employee/:empid" Method="GET" Call="GetEmployee" Cors="true"/>
+</Routes>
+]]></Data>
+</XData>
+
+<Method name="GetAllEmployee">
+<Description>
+GET要求時の処理</Description>
+<ClassMethod>1</ClassMethod>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	#dim ex As %Exception.AbstractException
+	#dim %request As %CSP.Request
+	set status=$$$OK
+	try {
+		set sql="select JSON_OBJECT('EMPID':EMPID,'Name':Name,'Location':Location,'Area':Area ABSENT ON NULL) as resultjson from ABCSystem.Employee"
+		//SQL実行用のインスタンス生成
+		set stmt=##class(%SQL.Statement).%New()
+		//組み立てたSQLのコンパイル
+		set status=stmt.%Prepare(sql)
+		#dim rset As %SQL.StatementResult
+		//SQL実行
+		set rset=stmt.%Execute()
+		//返送用JSON配列作成
+		set array=[]
+		//検索結果の前方に移動
+		while rset.%Next() {
+			//結果行のJSONをJSON配列に登録
+			do array.%Push({}.%FromJSON(rset.resultjson))
+		}
+		//JSONをHTTP応答として返送
+		do array.%ToJSON()
+		
+	}
+	catch ex {
+		set status=ex.AsStatus()
+	}
+	return status
+]]></Implementation>
+</Method>
+
+<Method name="CreateEmployee">
+<Description>
+POST要求時の処理</Description>
+<ClassMethod>1</ClassMethod>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	#dim ex As %Exception.AbstractException
+	#dim %request As %CSP.Request
+	set status=$$$OK
+	try {
+		//登録対象Employeeのインスタンスを生成
+		set newemp=##class(ABCSystem.Employee).%New()
+		//HTTP要求からJSONを取り出してEmployeeのインスタンスにインポート（エラー時はcatchに移動）
+		$$$ThrowOnError(newemp.%JSONImport(%request.Content.Read()))
+		//インスタンス保存（エラー時はcatchに移動）
+		$$$ThrowOnError(newemp.%Save())
+	}
+	catch ex {
+		set status=ex.AsStatus()
+	}
+	return status
+]]></Implementation>
+</Method>
+
+<Method name="GetEmployee">
+<Description>
+従業員番号を指定したGET要求の処理</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>empid:%String</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	#dim ex As %Exception.AbstractException
+	set status=$$$OK
+	try {
+		//指定の従業員番号のインスタンスをオープン
+		set emp=##class(ABCSystem.Employee).EMPIDIndexOpen(empid)
+		//インスタンスをJSONに変換しHTTP応答として返送
+		do emp.%JSONExport()
+	}
+	catch ex {
+		set status=ex.AsStatus()
+	}
+	return status
+]]></Implementation>
+</Method>
+
+<Parameter name="CONVERTINPUTSTREAM">
+<Default>1</Default>
+</Parameter>
+
+<Parameter name="CHARSET">
+<Default>utf-8</Default>
+</Parameter>
+
+<Parameter name="CONTENTTYPE">
+<Default>application/json</Default>
+</Parameter>
+</Class>
+</Export>

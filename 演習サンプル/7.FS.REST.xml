@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2021.1 (Build 205U)" ts="2021-10-28 10:13:50">
+<Class name="FS.REST">
+<Super>%CSP.REST</Super>
+<TimeChanged>66045,36660.24815</TimeChanged>
+<TimeCreated>66045,33867.528416</TimeCreated>
+
+<Parameter name="CONVERTINPUTSTREAM">
+<Default>1</Default>
+</Parameter>
+
+<Parameter name="CHARSET">
+<Default>utf-8</Default>
+</Parameter>
+
+<Parameter name="CONTENTTYPE">
+<Default>application/json</Default>
+</Parameter>
+
+<XData name="UrlMap">
+<XMLNamespace>http://www.intersystems.com/urlmap</XMLNamespace>
+<Data><![CDATA[
+<Routes>
+<Route Url="/request/:empid/:name/:location" Method="GET" Call="CallService" Cors="true"/>
+</Routes>
+]]></Data>
+</XData>
+
+<Method name="CallService">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>empid:%String,name:%String,location:%String</FormalSpec>
+<Language>objectscript</Language>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	#dim ex As %Exception.AbstractException
+	set status=$$$OK
+	try {
+		$$$ThrowOnError(##class(Ens.Director).CreateBusinessService("FS.NonAdapter",.bs))
+		//ビジネスサービスに渡す要求メッセージを作成
+		set request=##class(FS.EmpRequest).%New()
+		set request.EMPID=empid
+		set request.Name=name
+		set request.Location=location
+		//引数に要求メッセージを指定し、ビジネスサービスのProcessInput()を呼び出す
+		$$$ThrowOnError(bs.ProcessInput(request))
+		set json={}
+		set json.Message="依頼しました"
+		do json.%ToJSON()
+	}
+	catch ex {
+		set status=ex.AsStatus()
+	}
+	return status
+]]></Implementation>
+</Method>
+</Class>
+</Export>

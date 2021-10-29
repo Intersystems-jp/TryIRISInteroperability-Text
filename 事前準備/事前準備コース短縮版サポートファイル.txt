@@ -1,0 +1,176 @@
+﻿○○○○○○○○○○○○○○○○○○
+○●● 事前準備コース　短縮版 ●●○
+○●●　演習サポートファイル　●●○
+○○○○○○○○○○○○○○○○○○
+
+----------------------------------------
+P29～　クラス定義（ABCSystem.Employee）
+----------------------------------------
+
+Class ABCSystem.Employee Extends %Persistent
+{
+
+Property Name As %String;
+
+Property EMPID As %String;
+
+Index EMPIDIndex On EMPID [ Unique ];
+
+Property Location As %String;
+
+Property Area As %String;
+}
+
+----------------------------------------
+P41　オブジェクトの生成と保存
+----------------------------------------
+
+※ 以下1行目のネームスペース変更はお使いの環境に合わせて適宜ご変更ください
+
+set $namespace="TEST"  //ネームスペース移動
+set emp=##class(ABCSystem.Employee).%New()  //インスタンス生成
+set emp.Name="テスト従業員"  //プロパティ設定
+set emp.EMPID="EMP0001"
+set emp.Location="東京都"
+set st=emp.%Save()  //保存
+
+write st  //保存結果の確認　1:成功、それ以外はエラーステータス
+
+// 以下お時間あればお試しください
+set emp2=##class(ABCSystem.Employee).%New()  //2つ目のインスタンス生成
+set emp2.EMPID="EMP0001"   //ユニークではない値を設定
+set st=emp2.%Save()  //保存
+write st  //エラーステータスが返ります（文字列ではないので読みにくい出力結果）
+
+write $system.Status.GetErrorText(st)  //エラー文字列を出力する
+
+
+
+----------------------------------------
+P44　SQL文例
+----------------------------------------
+UPDATE ABCSystem.Employee
+ SET Name='やまだたろう'
+ WHERE EMPID='EMP0001'
+
+INSERT INTO ABCSystem.Employee (EMPID,Name,Location,Area) VALUES('EMP0002','鈴木花子','北海道','エリア99')
+
+SELECT * FROM ABCSystem.Employee
+
+
+----------------------------------------
+P47　グローバル変数での参照／更新
+----------------------------------------
+write $LIST(^ABCSystem.EmployeeD(1),2)
+write $LIST(^ABCSystem.EmployeeD(1),3)
+
+set $LIST(^ABCSystem.EmployeeD(1),2)="直接編集した名前"
+
+
+----------------------------------------
+P48～　%JSON.Adapterの追加
+----------------------------------------
+
+〇クラス定義文の修正
+Class ABCSystem.Employee Extends (%Persistent, %JSON.Adaptor)
+
+
+〇エクスポート
+//永続オブジェクトのオープン
+set emp=##class(ABCSystem.Employee).%OpenId(1)
+ 	↑または↓
+set emp=##class(ABCSystem.Employee).EMPIDIndexOpen("EMP0001")
+
+//オープンしたインスタンスをJSON文字列にエクスポート
+do emp.%JSONExport()
+
+以下のようなJSONが表示される予定です
+{"Name":"やまだたろう","EMPID":"EMP0001","Location":"東京都"}
+
+//文字列にエクスポートして変数にセットする（第1引数は出力引数なので . を付与）
+do emp.%JSONExportToString(.moji)
+
+//ストリームにエクスポートして変数にセットする（第1引数は出力引数なので . を付与）
+do emp.%JSONExportToStream(.stream)
+//ストリームの中身をRead
+write stream.Read()
+
+
+
+〇インポート
+
+ファイルに以下のようなJSONを保存します（フルパスを指定するため、書きやすい所に置いてください）
+
+{
+ "Name":"JSON太郎",
+ "EMPID":"EMP0202",
+ "Location":"東京都",
+ "Area":"エリア1"
+}
+
+//インスタンス生成
+set emp=##class(ABCSystem.Employee).%New()
+
+//JSONファイルを読みインスタンスに割り当てる
+do emp.%JSONImport("c:\temp\input.json")
+
+//インスタンスの中身を全部表示（デバッグ用コマンドの zwrite を利用）
+zwrite emp
+
+
+
+
+----------------------------------------
+P60～　クラスメソッド　GetArea()
+----------------------------------------
+
+ClassMethod GetArea(input As %String) As %String [ Language = objectscript, SqlProc ]
+{
+	//引数が指定されなかったら
+	if $get(input)="" {
+		return ""
+	}
+	//関数を利用して戻す値を指定します
+	//第1引数の値と第2引数以降のcaseを比較し、最初に一致する caseの値を返します。
+	//caseは左から評価されます。　case:値　で指定します
+	return $case(input,"東京都":"エリア1","大阪府":"エリア2","沖縄県":"エリア2",:"エリア99")
+}
+
+
+ターミナルでの実行例
+write ##class(ABCSystem.Employee).GetArea("大阪府")
+
+
+SELECT文例
+select ABCSystem.Employee_GetArea(’東京都’)
+
+
+
+[おまけ]ターミナルをSQL実行モードに変更できます。
+
+do $system.SQL.Shell()
+
+＜ターミナルでの実行例＞
+
+EST>do $system.SQL.Shell()
+SQL Command Line Shell
+----------------------------------------------------
+
+The command prefix is currently set to: <<nothing>>.
+Enter <command>, 'q' to quit, '?' for help.
+[SQL]TEST>>select ABCSystem.Employee_GetArea('aaa')
+6.      select ABCSystem.Employee_GetArea('aaa')
+
+Expression_1
+エリア99
+
+1 Rows(s) Affected
+statement prepare time(s)/globals/cmds/disk: 0.0467s/2683/153217/0ms
+          execute time(s)/globals/cmds/disk: 0.0004s/0/422/0ms
+                          cached query class: %sqlcq.TEST.cls4
+---------------------------------------------------------------------------
+[SQL]TEST>>quit
+
+TEST>
+
+

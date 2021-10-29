@@ -1,0 +1,251 @@
+○○○○○○○○○○○○○○○○○○○○○○○○○○
+○●● InterSystems IRIS システム連携基盤体験 ●●○
+○●●　　　　　演習サポートファイル　　　　　●●○
+○○○○○○○○○○○○○○○○○○○○○○○○○○
+
+----------------------------------------
+P7～　ベースURLの設定（/ABCSystem）
+----------------------------------------
+[名前]	/ABCSystem
+[ネームスペース]	TEST
+[RESTディスパッチクラス]	ABCSystem.REST
+[許可された認証方法]	認証なし／パスワード　の両方をチェック
+
+
+----------------------------------------
+P9～　GET要求（/ABCSystem）
+----------------------------------------
+[Method]	GET
+[URL]	http://localhost:52773/ABCSystem/employee
+[HeadersのKEY]	Accept
+[Headers のVALUE]	application/json
+
+
+[Curlコマンドでの実行]
+curl http://localhost:52773/ABCSystem/employee
+
+
+
+----------------------------------------
+従業員番号を指定したGET要求
+----------------------------------------
+
+[Method]	GET
+[URL]	http://localhost:52773/ABCSystem/employee/EMP0001
+[HeadersのKEY]	Accept
+[Headers のVALUE]	application/json
+
+
+[Curlコマンドでの実行]
+curl http://localhost:52773/ABCSystem/employee/EMP0001
+
+
+
+----------------------------------------
+P11～　POST要求（/ABCSystem）
+----------------------------------------
+
+[Method]	POST
+[URL]	http://localhost:52773/ABCSystem/employee
+[HeadersのKEY]	Content-Type
+[Headers のVALUE]	application/json;charset=utf-8
+[Body] （以下のJSON）
+{
+    "Name":"別府太郎",
+    "Location":"東京",
+    "EMPID":"EMP0998"
+}
+
+
+[curlコマンドでPOST要求]
+送付したいBodyの中身はファイルに保存します（例では、C:\temp\post.jsonに保存しています）。
+
+curl -XPOST http://localhost:52773/ABCSystem/employee -H "Content-Type:application/json" -d @c:\temp\post.json
+
+
+----------------------------------------
+P16～　要求メッセージ：FS.EmpRequest
+----------------------------------------
+Class FS.EmpRequest Extends (Ens.Request, %JSON.Adaptor)
+{
+
+Property Name As %String;
+
+Property EMPID As %String;
+
+Property Location As %String;
+
+Property Area As %String;
+}
+
+----------------------------------------
+P16～　オペレーション:FS.EmpRESTOperation
+----------------------------------------
+
+[パッケージ名]	FS
+[クラス名]	EmpRESTOperation
+[アダプタ]	EnsLib.HTTP.OutboundAdapter
+[メソッド名]	PostEmployee
+[リクエストタイプ]	FS.EmpRequest
+
+
+Method PostEmployee(pRequest As FS.EmpRequest, Output pResponse As Ens.Response) As %Status
+{
+	#dim ex As %Exception.AbstractException
+	#dim pHttpResponse As %Net.HttpResponse
+	set status=$$$OK
+	try {
+		//要求メッセージをJSONに変換しストリームに保存する
+		do pRequest.%JSONExportToStream(.stream)	
+		set status=..Adapter.Post(.pHttpResponse,,stream)
+
+		//HTTP応答が200以外が返された場合
+		if pHttpResponse.StatusCode'=200 {
+			//ステータスエラーにHTTPレスポンスのメッセージ（JSON）を追加する。
+			set status=$$$ERROR($$$EnsErrGeneral,$$$StatusDisplayString(status)_":"_pHttpResponse.Data.Read())
+		}
+	}
+	catch ex {
+		set status=ex.AsStatus()
+	}
+	return status  //quit status　も同じ
+}
+
+
+----------------------------------------
+P21 オペレーションの設定
+----------------------------------------
+[HTTPサーバ]	localhost
+[HTTPポート]	52773
+[URL]	/ABCSystem/employee
+
+
+----------------------------------------
+P27 データ変換クラスの名称
+----------------------------------------
+[パッケージ名]	FS
+[名前]	LocationToArea
+[ソースクラス]	FS.EmpRequest
+[ターゲットクラス]	FS.EmpRequest（ソースクラスを指定すると自動的に同じ名称がセットされます）
+
+
+----------------------------------------
+P30～ プロセス：FS.EmpProcessの設定
+----------------------------------------
+[パッケージ]	FS
+[名前]	EmpProcess
+
+
+P31～
+[リクエスト・クラス]	FS.EmpRequest
+[レスポンス・クラス]	（デフォルト設定のまま）
+[コンテキスト・プロパティ]　（追加）	ConvertedRequest
+
+
+----------------------------------------
+P39～ サービス：FS.NonAdapter
+----------------------------------------
+
+[パケージ名]	FS
+[クラス名]	NonAdapter
+
+
+Method OnProcessInput(pInput As FS.EmpRequest, Output pOutput As %RegisteredObject) As %Status
+{
+	set status=..SendRequestAsync("FS.EmpProcess",pInput)
+	Quit status
+}
+
+
+----------------------------------------
+P41～ RESTディスパッチクラス：FS.REST
+----------------------------------------
+
+XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
+{
+<Routes>
+<Route Url="/request/:empid/:name/:location" Method="GET" Call="CallService" Cors="true"/>
+</Routes>
+}
+
+
+Parameter CONVERTINPUTSTREAM = 1;
+
+Parameter CHARSET = "utf-8";
+
+Parameter CONTENTTYPE = "application/json";
+
+
+
+----------------------------------------
+P44～　CallService()メソッドの定義
+----------------------------------------
+
+[第1引数]	empid As %String
+[第2引数]	name As %String
+[第3引数]	location As %String
+[戻り値]	%Status
+[メソッド属性]	クラスメソッド
+
+
+ClassMethod CallService(empid As %String, name As %String, location As %String) As %Status [ Language = objectscript ]
+{
+	#dim ex As %Exception.AbstractException
+	set status=$$$OK
+	try {
+
+	}
+	catch ex {
+		set status=ex.AsStatus()
+	}
+	return status
+}
+
+
+----------------------------------------
+P46　CallService()メソッド 完成形
+----------------------------------------
+ClassMethod CallService(empid As %String, name As %String, location As %String) As %Status [ Language = objectscript ]
+{
+	#dim ex As %Exception.AbstractException
+	set status=$$$OK
+	try {
+		$$$ThrowOnError(##class(Ens.Director).CreateBusinessService("FS.NonAdapter",.bs))
+		//ビジネスサービスに渡す要求メッセージを作成
+		set request=##class(FS.EmpRequest).%New()
+		set request.EMPID=empid
+		set request.Name=name
+		set request.Location=location
+		//引数に要求メッセージを指定し、ビジネスサービスのProcessInput()を呼び出す
+		$$$ThrowOnError(bs.ProcessInput(request))
+		set json={}
+		set json.Message="依頼しました"
+		do json.%ToJSON()
+	}
+	catch ex {
+		set status=ex.AsStatus()
+	}
+	return status
+}
+
+
+----------------------------------------
+P47　RESTディスパッチクラスのベースURL:/production　の設定
+----------------------------------------
+
+[名前]	/production
+[ネームスペース]	TEST
+[RESTディスパッチクラス]	FS.REST
+[許可された認証方法]	認証なし／パスワード　の両方をチェック
+
+
+
+----------------------------------------
+P49　GET要求:/production
+----------------------------------------
+[Method]	GET
+[URL]	http://localhost:52773/production/request/EMP0999/田口信二/北海道
+[HeadersのKEY]	Accept
+[Headers のVALUE]	application/json
+
+

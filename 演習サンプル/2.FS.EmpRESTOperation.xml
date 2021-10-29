@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2021.1 (Build 205U)" ts="2021-10-27 20:36:23">
+<Class name="FS.EmpRESTOperation">
+<Super>Ens.BusinessOperation</Super>
+<TimeChanged>66044,74154.75011</TimeChanged>
+<TimeCreated>66044,74154.75011</TimeCreated>
+
+<Parameter name="ADAPTER">
+<Default>EnsLib.HTTP.OutboundAdapter</Default>
+</Parameter>
+
+<Property name="Adapter">
+<Type>EnsLib.HTTP.OutboundAdapter</Type>
+</Property>
+
+<Parameter name="INVOCATION">
+<Default>Queue</Default>
+</Parameter>
+
+<Method name="PostEmployee">
+<FormalSpec>pRequest:FS.EmpRequest,*pResponse:Ens.Response</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	#dim ex As %Exception.AbstractException
+	#dim pHttpResponse As %Net.HttpResponse
+	set status=$$$OK
+	try {
+		//要求メッセージをJSONに変換しストリームに保存する
+		do pRequest.%JSONExportToStream(.stream)	
+		set status=..Adapter.Post(.pHttpResponse,,stream)
+
+		//HTTP応答が200以外が返された場合
+		if pHttpResponse.StatusCode'=200 {
+			//ステータスエラーにHTTPレスポンスのメッセージ（JSON）を追加する。
+			set status=$$$ERROR($$$EnsErrGeneral,$$$StatusDisplayString(status)_":"_pHttpResponse.Data.Read())
+		}
+	}
+	catch ex {
+		set status=ex.AsStatus()
+	}
+	return status  //quit status　も同じ
+]]></Implementation>
+</Method>
+
+<XData name="MessageMap">
+<Data><![CDATA[
+<MapItems>
+	<MapItem MessageType="FS.EmpRequest"> 
+		<Method>PostEmployee</Method>
+	</MapItem>
+</MapItems>
+]]></Data>
+</XData>
+</Class>
+</Export>

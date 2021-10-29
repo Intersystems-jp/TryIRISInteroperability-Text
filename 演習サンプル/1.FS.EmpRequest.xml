@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2021.1 (Build 205U)" ts="2021-10-27 20:36:20">
+<Class name="FS.EmpRequest">
+<Super>Ens.Request,%JSON.Adaptor</Super>
+<TimeChanged>66044,68539.8243</TimeChanged>
+<TimeCreated>66044,68539.292549</TimeCreated>
+
+<Property name="Name">
+<Type>%String</Type>
+</Property>
+
+<Property name="EMPID">
+<Type>%String</Type>
+</Property>
+
+<Property name="Location">
+<Type>%String</Type>
+</Property>
+
+<Property name="Area">
+<Type>%String</Type>
+</Property>
+
+<Storage name="Default">
+<Type>%Storage.Persistent</Type>
+<DefaultData>EmpRequestDefaultData</DefaultData>
+<Data name="EmpRequestDefaultData">
+<Structure>listnode</Structure>
+<Subscript>"EmpRequest"</Subscript>
+<Value name="1">
+<Value>Name</Value>
+</Value>
+<Value name="2">
+<Value>EMPID</Value>
+</Value>
+<Value name="3">
+<Value>Location</Value>
+</Value>
+<Value name="4">
+<Value>Area</Value>
+</Value>
+</Data>
+</Storage>
+</Class>
+</Export>

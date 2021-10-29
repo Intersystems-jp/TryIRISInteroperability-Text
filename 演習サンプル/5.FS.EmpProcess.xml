@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2021.1 (Build 215U)" ts="2021-10-28 12:20:10">
+<Class name="FS.EmpProcess">
+<Description>
+</Description>
+<Super>Ens.BusinessProcessBPL</Super>
+<TimeChanged>66045,11670.049275</TimeChanged>
+<TimeCreated>66045,11670.049275</TimeCreated>
+
+<Storage name="Default">
+<Type>%Storage.Persistent</Type>
+</Storage>
+
+<XData name="BPL">
+<Description>
+BPL Definition</Description>
+<XMLNamespace>http://www.intersystems.com/bpl</XMLNamespace>
+<Data><![CDATA[
+<process language='objectscript' request='FS.EmpRequest' response='Ens.Response' height='2000' width='2000' >
+<context>
+<property name='ConvertedRequest' type='FS.EmpRequest' instantiate='0' />
+</context>
+<sequence xend='200' yend='450' >
+<transform name='データ変換の呼び出し' class='FS.LocationToAreaDTL' source='request' target='context.ConvertedRequest' xpos='412' ypos='281' />
+<call name='POST要求' target='FS.EmpRESTOperation' async='1' xpos='657' ypos='415' >
+<request type='FS.EmpRequest' >
+<assign property="callrequest" value="context.ConvertedRequest" action="set" />
+</request>
+<response type='Ens.Response' />
+</call>
+</sequence>
+</process>
+]]></Data>
+</XData>
+</Class>
+</Export>

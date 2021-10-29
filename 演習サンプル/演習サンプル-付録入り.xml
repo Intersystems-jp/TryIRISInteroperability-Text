@@ -1,0 +1,625 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="IRIS" version="26" zv="IRIS for Windows (x86-64) 2021.1 (Build 215U)" ts="2021-10-28 14:53:24">
+<Class name="ABCSystem.Employee">
+<Super>%Persistent,%JSON.Adaptor</Super>
+<TimeChanged>66045,24953.360639</TimeChanged>
+<TimeCreated>66043,81837.044113</TimeCreated>
+
+<Property name="Name">
+<Type>%String</Type>
+</Property>
+
+<Property name="EMPID">
+<Type>%String</Type>
+</Property>
+
+<Property name="Location">
+<Type>%String</Type>
+</Property>
+
+<Property name="Area">
+<Type>%String</Type>
+</Property>
+
+<Index name="EMPIDIndex">
+<Properties>EMPID</Properties>
+<Unique>1</Unique>
+</Index>
+
+<Method name="GetArea">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>input:%String</FormalSpec>
+<Language>objectscript</Language>
+<ReturnType>%String</ReturnType>
+<SqlProc>1</SqlProc>
+<Implementation><![CDATA[
+	//引数が指定されなかったら
+	if $get(input)="" {
+		return ""
+	}
+	//関数を利用して戻す値を指定します
+	//第1引数の値と第2引数以降のcaseを比較し、最初に一致する caseの値を返します。
+	//caseは左から評価されます。　case:値　で指定します
+	return $case(input,"東京都":"エリア1","大阪府":"エリア2","沖縄県":"エリア2",:"エリア99")
+]]></Implementation>
+</Method>
+
+<Storage name="Default">
+<Type>%Storage.Persistent</Type>
+<DataLocation>^ABCSystem.EmployeeD</DataLocation>
+<DefaultData>EmployeeDefaultData</DefaultData>
+<IdLocation>^ABCSystem.EmployeeD</IdLocation>
+<IndexLocation>^ABCSystem.EmployeeI</IndexLocation>
+<StreamLocation>^ABCSystem.EmployeeS</StreamLocation>
+<Data name="EmployeeDefaultData">
+<Value name="1">
+<Value>%%CLASSNAME</Value>
+</Value>
+<Value name="2">
+<Value>Name</Value>
+</Value>
+<Value name="3">
+<Value>EMPID</Value>
+</Value>
+<Value name="4">
+<Value>Location</Value>
+</Value>
+<Value name="5">
+<Value>Area</Value>
+</Value>
+</Data>
+</Storage>
+</Class>
+
+
+<Class name="ABCSystem.REST">
+<Description>
+RESTディスパッチクラス</Description>
+<Super>%CSP.REST</Super>
+<TimeChanged>66043,53063.922994</TimeChanged>
+<TimeCreated>66043,29100.044771</TimeCreated>
+
+<Parameter name="CONVERTINPUTSTREAM">
+<Default>1</Default>
+</Parameter>
+
+<Parameter name="CHARSET">
+<Default>utf-8</Default>
+</Parameter>
+
+<Parameter name="CONTENTTYPE">
+<Default>application/json</Default>
+</Parameter>
+
+<XData name="UrlMap">
+<Description>
+ベースURL以降のURLに対応するHTTPメソッドと処理（メソッド）の指定</Description>
+<XMLNamespace>http://www.intersystems.com/urlmap</XMLNamespace>
+<Data><![CDATA[
+<Routes>
+<Route Url="/employee" Method="POST" Call="CreateEmployee" Cors="true"/>
+<Route Url="/employee" Method="GET" Call="GetAllEmployee" Cors="true"/>
+<Route Url="/employee/:empid" Method="GET" Call="GetEmployee" Cors="true"/>
+</Routes>
+]]></Data>
+</XData>
+
+<Method name="CreateEmployee">
+<Description>
+POST要求時の処理</Description>
+<ClassMethod>1</ClassMethod>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	#dim ex As %Exception.AbstractException
+	#dim %request As %CSP.Request
+	set status=$$$OK
+	try {
+		//登録対象Employeeのインスタンスを生成
+		set newemp=##class(ABCSystem.Employee).%New()
+		//HTTP要求からJSONを取り出してEmployeeのインスタンスにインポート（エラー時はcatchに移動）
+		$$$ThrowOnError(newemp.%JSONImport(%request.Content.Read()))
+		//インスタンス保存（エラー時はcatchに移動）
+		$$$ThrowOnError(newemp.%Save())
+	}
+	catch ex {
+		set status=ex.AsStatus()
+	}
+	return status
+]]></Implementation>
+</Method>
+
+<Method name="GetAllEmployee">
+<Description>
+GET要求時の処理</Description>
+<ClassMethod>1</ClassMethod>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	#dim ex As %Exception.AbstractException
+	#dim %request As %CSP.Request
+	set status=$$$OK
+	try {
+		set sql="select JSON_OBJECT('EMPID':EMPID,'Name':Name,'Location':Location,'Area':Area ABSENT ON NULL) as resultjson from ABCSystem.Employee"
+		//SQL実行用のインスタンス生成
+		set stmt=##class(%SQL.Statement).%New()
+		//組み立てたSQLのコンパイル
+		set status=stmt.%Prepare(sql)
+		#dim rset As %SQL.StatementResult
+		//SQL実行
+		set rset=stmt.%Execute()
+		//返送用JSON配列作成
+		set array=[]
+		//検索結果の前方に移動
+		while rset.%Next() {
+			//結果行のJSONをJSON配列に登録
+			do array.%Push({}.%FromJSON(rset.resultjson))
+		}
+		//JSONをHTTP応答として返送
+		do array.%ToJSON()
+		
+	}
+	catch ex {
+		set status=ex.AsStatus()
+	}
+	return status
+]]></Implementation>
+</Method>
+
+<Method name="GetEmployee">
+<Description>
+従業員番号を指定したGET要求の処理</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>empid:%String</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	#dim ex As %Exception.AbstractException
+	set status=$$$OK
+	try {
+		//指定の従業員番号のインスタンスをオープン
+		set emp=##class(ABCSystem.Employee).EMPIDIndexOpen(empid)
+		//インスタンスをJSONに変換しHTTP応答として返送
+		do emp.%JSONExport()
+	}
+	catch ex {
+		set status=ex.AsStatus()
+	}
+	return status
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Package name="ABCSystem" sqlname="ABCSystem"/>
+
+
+<Class name="FS.EmpFileService">
+<Super>Ens.BusinessService</Super>
+<TimeChanged>66043,56907.870946</TimeChanged>
+<TimeCreated>64890,80108.438812</TimeCreated>
+
+<Parameter name="ADAPTER">
+<Default>EnsLib.File.InboundAdapter</Default>
+</Parameter>
+
+<Method name="OnProcessInput">
+<FormalSpec>pInput:%Stream.Object,*pOutput:%RegisteredObject</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	//　ファイルに記載された情報を取得
+	set line=pInput.ReadLine()
+	//読み込んだ行をビジネスプロセスへリクエストメッセージとして送信するため 
+	// リクエストメッセージ：FS.EmpRequestオブジェクトを新規作成します
+	set request=##class(FS.EmpRequest).%New()
+	//　ファイルの形式に合わせて、カンマ区切りn番目を該当するプロパティに設定します
+	//　区切り文字付きの文字列操作には、$PIECE関数が便利です。
+	//　	$PIECE(文字列,"区切りマーク",n番目) 
+	//		サンプルでは、EMPID,Name,Location　の順番で情報が登録されるとしています
+	set request.EMPID=$piece(line,",",1)
+	set request.Name=$piece(line,",",2)
+	set request.Location=$piece(line,",",3)
+	
+	//　SendRequestAsync()メソッド実行でメッセージをビジネスプロセスへ送信します
+	//　第3引数は、応答メッセージを受け取りたいときに指定します（参照渡し）
+	// （応答メッセージがない場合は、省略可）
+	set status=..SendRequestAsync("FS.EmpProcess",request)
+	quit status
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="FS.EmpProcess.Context">
+<Description>
+This class is generated by the FS.EmpProcess BPL class.
+This class should not be edited or modified in any way.
+Do not make direct use of this class in your application.</Description>
+<ClassType>persistent</ClassType>
+<CompileAfter>FS.EmpProcess</CompileAfter>
+<IncludeCode/>
+<ProcedureBlock>1</ProcedureBlock>
+<Super>Ens.BP.Context</Super>
+<TimeChanged>66045,53138.015027</TimeChanged>
+<TimeCreated>66045,23403.642687</TimeCreated>
+<GeneratedBy>Ens.BPL.Compiler.CLS</GeneratedBy>
+
+<Storage name="Default">
+<Type>%Storage.Persistent</Type>
+<DefaultData>ContextDefaultData1</DefaultData>
+<Data name="ContextDefaultData1">
+<Structure>listnode</Structure>
+<Subscript>"Context"</Subscript>
+<Value name="1">
+<Value>ConvertedRequest</Value>
+</Value>
+</Data>
+</Storage>
+
+<Property name="ConvertedRequest">
+<Type>FS.EmpRequest</Type>
+</Property>
+</Class>
+
+
+<Class name="FS.EmpProcess.Thread1">
+<Description>
+This class is generated by the FS.EmpProcess BPL class.
+This class should not be edited or modified in any way.
+Do not make direct use of this class in your application.</Description>
+<ClassType>persistent</ClassType>
+<CompileAfter>FS.EmpProcess</CompileAfter>
+<IncludeCode/>
+<ProcedureBlock>1</ProcedureBlock>
+<Super>Ens.BP.Thread</Super>
+<TimeChanged>66045,53138.31536</TimeChanged>
+<TimeCreated>66045,53137.954564</TimeCreated>
+<GeneratedBy>Ens.BPL.Compiler.CLS</GeneratedBy>
+
+<Method name="S1">
+<FormalSpec>process:Ens.BusinessProcess,context:Ens.BP.Context,synctimedout:%Boolean,syncresponses:%ArrayOfObjects(ELEMENTTYPE="%Library.Persistent"),request:%Library.Persistent,response:%Library.Persistent</FormalSpec>
+<Language>objectscript</Language>
+<PublicList>process,context</PublicList>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+ Set $ZT="Trap",status=$$$OK do {
+ Set iscTemp=context.ConvertedRequest
+ Set status=$classmethod("FS.LocationToAreaDTL","Transform",request,.iscTemp,"")
+ If $$$ISERR(status) Quit
+ Set context.ConvertedRequest=iscTemp
+ #; --- Begin Call POST要求 ---
+ #; --- Begin Request ---
+ Set callrequest=##class(FS.EmpRequest).%New()
+ If '$IsObject(callrequest) Set status=%objlasterror Quit
+ Set status=$$$OK,callrequest=context.ConvertedRequest
+ If $$$ISERR(status) Quit
+ Set status=..MakeAsyncCall("","FS.EmpRESTOperation",callrequest,"POST要求",1,0,"POST要求",0)
+ If $$$ISERR(status) Quit
+ Kill callrequest
+ #; --- End Request ---
+ #; --- End Call POST要求 ---
+ Do process.ClearAllPendingResponses()
+ Set ..%NextState="Stop"
+ } while (0)
+Exit Quit ..ManageState(status)
+Trap Set $ZT="",status=..ManageStatus(status,"S1") Goto Exit
+]]></Implementation>
+</Method>
+
+<Storage name="Default">
+<Type>%Storage.Persistent</Type>
+</Storage>
+</Class>
+
+
+<Class name="FS.EmpProcess">
+<Description>
+</Description>
+<Super>Ens.BusinessProcessBPL</Super>
+<TimeChanged>66045,11670.049275</TimeChanged>
+<TimeCreated>66045,11670.049275</TimeCreated>
+
+<Storage name="Default">
+<Type>%Storage.Persistent</Type>
+</Storage>
+
+<XData name="BPL">
+<Description>
+BPL Definition</Description>
+<XMLNamespace>http://www.intersystems.com/bpl</XMLNamespace>
+<Data><![CDATA[
+<process language='objectscript' request='FS.EmpRequest' response='Ens.Response' height='2000' width='2000' >
+<context>
+<property name='ConvertedRequest' type='FS.EmpRequest' instantiate='0' />
+</context>
+<sequence xend='200' yend='450' >
+<transform name='データ変換の呼び出し' class='FS.LocationToAreaDTL' source='request' target='context.ConvertedRequest' xpos='412' ypos='281' />
+<call name='POST要求' target='FS.EmpRESTOperation' async='1' xpos='657' ypos='415' >
+<request type='FS.EmpRequest' >
+<assign property="callrequest" value="context.ConvertedRequest" action="set" />
+</request>
+<response type='Ens.Response' />
+</call>
+</sequence>
+</process>
+]]></Data>
+</XData>
+</Class>
+
+
+<Class name="FS.EmpProduction">
+<Super>Ens.Production</Super>
+<TimeChanged>66045,53503.355143</TimeChanged>
+<TimeCreated>66044,66882.803246</TimeCreated>
+
+<XData name="ProductionDefinition">
+<Data><![CDATA[
+<Production Name="FS.EmpProduction" TestingEnabled="true" LogGeneralTraceEvents="false">
+  <Description></Description>
+  <ActorPoolSize>2</ActorPoolSize>
+  <Item Name="FS.EmpRESTOperation" Category="" ClassName="FS.EmpRESTOperation" PoolSize="1" Enabled="true" Foreground="false" Comment="" LogTraceEvents="false" Schedule="">
+    <Setting Target="Adapter" Name="HTTPPort">52773</Setting>
+    <Setting Target="Adapter" Name="HTTPServer">localhost</Setting>
+    <Setting Target="Adapter" Name="URL">/ABCSystem/employee</Setting>
+  </Item>
+  <Item Name="FS.EmpProcess" Category="" ClassName="FS.EmpProcess" PoolSize="1" Enabled="true" Foreground="false" Comment="" LogTraceEvents="false" Schedule="">
+  </Item>
+  <Item Name="FS.NonAdapter" Category="" ClassName="FS.NonAdapter" PoolSize="0" Enabled="true" Foreground="false" Comment="" LogTraceEvents="false" Schedule="">
+  </Item>
+  <Item Name="FS.EmpFileService" Category="" ClassName="FS.EmpFileService" PoolSize="1" Enabled="true" Foreground="false" Comment="" LogTraceEvents="false" Schedule="">
+    <Setting Target="Adapter" Name="FilePath">C:\temp\in\</Setting>
+    <Setting Target="Adapter" Name="FileSpec">*.txt</Setting>
+  </Item>
+  <Item Name="FS.EmpSQLOperation" Category="" ClassName="FS.EmpSQLOperation" PoolSize="1" Enabled="true" Foreground="false" Comment="" LogTraceEvents="false" Schedule="">
+    <Setting Target="Adapter" Name="DSN">TEST</Setting>
+  </Item>
+</Production>
+]]></Data>
+</XData>
+</Class>
+
+
+<Class name="FS.EmpRESTOperation">
+<Super>Ens.BusinessOperation</Super>
+<TimeChanged>66044,74154.75011</TimeChanged>
+<TimeCreated>66044,74154.75011</TimeCreated>
+
+<Parameter name="ADAPTER">
+<Default>EnsLib.HTTP.OutboundAdapter</Default>
+</Parameter>
+
+<Property name="Adapter">
+<Type>EnsLib.HTTP.OutboundAdapter</Type>
+</Property>
+
+<Parameter name="INVOCATION">
+<Default>Queue</Default>
+</Parameter>
+
+<Method name="PostEmployee">
+<FormalSpec>pRequest:FS.EmpRequest,*pResponse:Ens.Response</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	#dim ex As %Exception.AbstractException
+	#dim pHttpResponse As %Net.HttpResponse
+	set status=$$$OK
+	try {
+		//要求メッセージをJSONに変換しストリームに保存する
+		do pRequest.%JSONExportToStream(.stream)	
+		set status=..Adapter.Post(.pHttpResponse,,stream)
+
+		//HTTP応答が200以外が返された場合
+		if pHttpResponse.StatusCode'=200 {
+			//ステータスエラーにHTTPレスポンスのメッセージ（JSON）を追加する。
+			set status=$$$ERROR($$$EnsErrGeneral,$$$StatusDisplayString(status)_":"_pHttpResponse.Data.Read())
+		}
+	}
+	catch ex {
+		set status=ex.AsStatus()
+	}
+	return status  //quit status　も同じ
+]]></Implementation>
+</Method>
+
+<XData name="MessageMap">
+<Data><![CDATA[
+<MapItems>
+	<MapItem MessageType="FS.EmpRequest"> 
+		<Method>PostEmployee</Method>
+	</MapItem>
+</MapItems>
+]]></Data>
+</XData>
+</Class>
+
+
+<Class name="FS.EmpRequest">
+<Super>Ens.Request,%JSON.Adaptor</Super>
+<TimeChanged>66044,68539.8243</TimeChanged>
+<TimeCreated>66044,68539.292549</TimeCreated>
+
+<Property name="Name">
+<Type>%String</Type>
+</Property>
+
+<Property name="EMPID">
+<Type>%String</Type>
+</Property>
+
+<Property name="Location">
+<Type>%String</Type>
+</Property>
+
+<Property name="Area">
+<Type>%String</Type>
+</Property>
+
+<Storage name="Default">
+<Type>%Storage.Persistent</Type>
+<DefaultData>EmpRequestDefaultData</DefaultData>
+<Data name="EmpRequestDefaultData">
+<Structure>listnode</Structure>
+<Subscript>"EmpRequest"</Subscript>
+<Value name="1">
+<Value>Name</Value>
+</Value>
+<Value name="2">
+<Value>EMPID</Value>
+</Value>
+<Value name="3">
+<Value>Location</Value>
+</Value>
+<Value name="4">
+<Value>Area</Value>
+</Value>
+</Data>
+</Storage>
+</Class>
+
+
+<Class name="FS.EmpSQLOperation">
+<Super>Ens.BusinessOperation</Super>
+<TimeChanged>66043,57100.183356</TimeChanged>
+<TimeCreated>64890,43581.520026</TimeCreated>
+
+<Parameter name="ADAPTER">
+<Default>EnsLib.SQL.OutboundAdapter</Default>
+</Parameter>
+
+<Property name="Adapter">
+<Type>EnsLib.SQL.OutboundAdapter</Type>
+</Property>
+
+<Parameter name="INVOCATION">
+<Default>Queue</Default>
+</Parameter>
+
+<Method name="Execute">
+<FormalSpec>pRequest:FS.EmpRequest,*pResponse:Ens.Response</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	//他システムに渡すSQLを組み立てる
+	set sql="insert into ABCSystem.Employee (Name,Location,Area,EMPID) values(?,?,?,?)"
+	
+	//アダプタ経由でSQLの更新文を外部システムに依頼する
+	// 第1引数は影響を受けた行数が登録される出力引数、第2引数は外部システムに渡すSQL
+	// 第3引数以降はSQLの引数
+	set status=..Adapter.ExecuteUpdate(.nrows,sql,pRequest.Name,pRequest.Location,pRequest.Area,pRequest.EMPID)
+	quit status
+]]></Implementation>
+</Method>
+
+<XData name="MessageMap">
+<Data><![CDATA[
+<MapItems>
+	<MapItem MessageType="FS.EmpRequest"> 
+		<Method>Execute</Method>
+	</MapItem>
+</MapItems>
+]]></Data>
+</XData>
+</Class>
+
+
+<Class name="FS.LocationToAreaDTL">
+<Super>Ens.DataTransformDTL</Super>
+<TimeChanged>66044,81597.941981</TimeChanged>
+<TimeCreated>66044,80680.456898</TimeCreated>
+<DependsOn>FS.EmpRequest</DependsOn>
+
+<Parameter name="IGNOREMISSINGSOURCE">
+<Default>1</Default>
+</Parameter>
+
+<Parameter name="REPORTERRORS">
+<Default>1</Default>
+</Parameter>
+
+<Parameter name="TREATEMPTYREPEATINGFIELDASNULL">
+<Default>0</Default>
+</Parameter>
+
+<XData name="DTL">
+<XMLNamespace>http://www.intersystems.com/dtl</XMLNamespace>
+<Data><![CDATA[
+<transform sourceClass='FS.EmpRequest' targetClass='FS.EmpRequest' create='new' language='objectscript' >
+<assign value='source.Name' property='target.Name' action='set' />
+<assign value='source.EMPID' property='target.EMPID' action='set' />
+<assign value='source.Location' property='target.Location' action='set' />
+<assign value='..Lookup("LocationToArea",source.Location,"エリア99")' property='target.Area' action='set' />
+</transform>
+]]></Data>
+</XData>
+</Class>
+
+
+<Class name="FS.NonAdapter">
+<Super>Ens.BusinessService</Super>
+<TimeChanged>66045,25147.018648</TimeChanged>
+<TimeCreated>66045,25147.018648</TimeCreated>
+
+<Method name="OnProcessInput">
+<FormalSpec>pInput:FS.EmpRequest,*pOutput:%RegisteredObject</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	set status=..SendRequestAsync("FS.EmpProcess",pInput)
+	Quit status
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="FS.REST">
+<Super>%CSP.REST</Super>
+<TimeChanged>66045,36660.24815</TimeChanged>
+<TimeCreated>66045,33867.528416</TimeCreated>
+
+<Parameter name="CONVERTINPUTSTREAM">
+<Default>1</Default>
+</Parameter>
+
+<Parameter name="CHARSET">
+<Default>utf-8</Default>
+</Parameter>
+
+<Parameter name="CONTENTTYPE">
+<Default>application/json</Default>
+</Parameter>
+
+<XData name="UrlMap">
+<XMLNamespace>http://www.intersystems.com/urlmap</XMLNamespace>
+<Data><![CDATA[
+<Routes>
+<Route Url="/request/:empid/:name/:location" Method="GET" Call="CallService" Cors="true"/>
+</Routes>
+]]></Data>
+</XData>
+
+<Method name="CallService">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>empid:%String,name:%String,location:%String</FormalSpec>
+<Language>objectscript</Language>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	#dim ex As %Exception.AbstractException
+	set status=$$$OK
+	try {
+		$$$ThrowOnError(##class(Ens.Director).CreateBusinessService("FS.NonAdapter",.bs))
+		//ビジネスサービスに渡す要求メッセージを作成
+		set request=##class(FS.EmpRequest).%New()
+		set request.EMPID=empid
+		set request.Name=name
+		set request.Location=location
+		//引数に要求メッセージを指定し、ビジネスサービスのProcessInput()を呼び出す
+		$$$ThrowOnError(bs.ProcessInput(request))
+		set json={}
+		set json.Message="依頼しました"
+		do json.%ToJSON()
+	}
+	catch ex {
+		set status=ex.AsStatus()
+	}
+	return status
+]]></Implementation>
+</Method>
+</Class>
+
+
+</Export>

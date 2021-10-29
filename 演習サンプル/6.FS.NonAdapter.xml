@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2021.1 (Build 205U)" ts="2021-10-28 09:48:37">
+<Class name="FS.NonAdapter">
+<Super>Ens.BusinessService</Super>
+<TimeChanged>66045,25147.018648</TimeChanged>
+<TimeCreated>66045,25147.018648</TimeCreated>
+
+<Method name="OnProcessInput">
+<FormalSpec>pInput:FS.EmpRequest,*pOutput:%RegisteredObject</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	set status=..SendRequestAsync("FS.EmpProcess",pInput)
+	Quit status
+]]></Implementation>
+</Method>
+</Class>
+</Export>
