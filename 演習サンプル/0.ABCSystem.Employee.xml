@@ -1,21 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2021.1 (Build 205U)" ts="2021-10-27 17:21:21">
+<Export generator="IRIS" version="26" zv="IRIS for Windows (x86-64) 2021.1 (Build 215U)" ts="2021-11-05 06:33:59">
 <Class name="ABCSystem.Employee">
 <Super>%Persistent,%JSON.Adaptor</Super>
-<TimeChanged>66043,36628.309231</TimeChanged>
+<TimeChanged>66053,23523.0744</TimeChanged>
 <TimeCreated>66043,36628.309231</TimeCreated>
 
 <Property name="Name">
-<Description>
-人の名前</Description>
-<Type>%String</Type>
-</Property>
-
-<Property name="Location">
-<Type>%String</Type>
-</Property>
-
-<Property name="Area">
 <Type>%String</Type>
 </Property>
 
@@ -28,6 +18,14 @@
 <Unique>1</Unique>
 </Index>
 
+<Property name="Location">
+<Type>%String</Type>
+</Property>
+
+<Property name="Area">
+<Type>%String</Type>
+</Property>
+
 <Storage name="Default">
 <Type>%Storage.Persistent</Type>
 <DataLocation>^ABCSystem.EmployeeD</DataLocation>
@@ -36,6 +34,8 @@
 <IndexLocation>^ABCSystem.EmployeeI</IndexLocation>
 <StreamLocation>^ABCSystem.EmployeeS</StreamLocation>
 <Data name="EmployeeDefaultData">
+<Structure>listnode</Structure>
+<Subscript/>
 <Value name="1">
 <Value>%%CLASSNAME</Value>
 </Value>
@@ -43,13 +43,13 @@
 <Value>Name</Value>
 </Value>
 <Value name="3">
-<Value>Location</Value>
+<Value>EMPID</Value>
 </Value>
 <Value name="4">
-<Value>Area</Value>
+<Value>Location</Value>
 </Value>
 <Value name="5">
-<Value>EMPID</Value>
+<Value>Area</Value>
 </Value>
 </Data>
 </Storage>
